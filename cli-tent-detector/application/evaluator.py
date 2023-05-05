@@ -5,7 +5,7 @@ from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from application.dataset import SegmentationDataset
-from application.model import Operator
+from application.operator import Operator
 from application.visualizations import save_data
 
 

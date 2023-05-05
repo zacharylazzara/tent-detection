@@ -18,14 +18,4 @@ class OFormat(IOFormat):
     model = 'pth'
     spreadsheet = 'csv'
     image = 'png'
-
-
-class DataSource(StrEnum):
-    default = 'sarpol'
-    uploaded = 'uploaded'
-
-
-class ModelSource(StrEnum):
-    new = 'new'
-    default = 'default'
-    specified = 'specified'
+    

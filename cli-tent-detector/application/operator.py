@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statistics import mean
 from tqdm.auto import tqdm
+from torch.optim import Optimizer
 from torchvision.utils import save_image
 from torch.utils.data import DataLoader
 from application.config import OFormat
@@ -14,14 +15,14 @@ from application.utils import make_dirs
 class Operator():
     """Makes it possible to work with models in a more generalized and scalable fashion."""
 
-    def __init__(self, root_directory: str, model: torch.nn.Module, loss_fn, opt_fn, metric_fns=None, **kwargs) -> None:
+    def __init__(self, root_directory: str, model: torch.nn.Module, loss_fn: torch.nn.Module, opt_fn: Optimizer, lr: float, metric_fns=None, **kwargs) -> None:
         self.device = kwargs.get('device', 'gpu' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
         self.model = model.to(self.device)
 
         # Only needed if training (TODO: change after we get this working; maybe include in training settings and pass training settings to Model?) #
         self.loss_fn = loss_fn
         self.opt_fn = opt_fn(self.model.parameters(),
-                             lr=kwargs.get('lr', 0.0001))
+                             lr=lr)
         self.metric_fns = metric_fns
 
         if self.metric_fns:
