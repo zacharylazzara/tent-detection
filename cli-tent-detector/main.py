@@ -40,10 +40,10 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=Fa
     if training and not y_dir:
         raise Exception('Cannot train without binary masks!')
 
-    print(f'Using device: {DEVICE}')
+    if kwargs.get('verbose', False): print(f'Using device: {DEVICE}')
 
     if DEVICE == 'cpu' and training:
-        print('Warning: Training on CPU. This might be exceptionally slow.')
+        if kwargs.get('verbose', False): print('Warning: Training on CPU. This might be exceptionally slow.')
 
     operator = None
     if checkpoint_path:
@@ -53,11 +53,11 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=Fa
         try:
             checkpoint.eval()
         except AttributeError:
-            print('Loading checkpoint')
+            if kwargs.get('verbose', False): print('Loading checkpoint')
             model = kwargs.get('model', UNet())
             model.load_state_dict(checkpoint)
         else:
-            print('Loading model')
+            if kwargs.get('verbose', False): print('Loading model')
             model = checkpoint
 
         operator = Operator(p_output_path,
@@ -68,7 +68,7 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=Fa
                             [BinaryF1Score(), BinaryJaccardIndex()],
                             device=DEVICE)
     elif training:
-        print('No model path specified, creating a new model.')
+        if kwargs.get('verbose', False): print('No model path specified, creating a new model.')
         operator = Operator(p_output_path,
                             kwargs.get('model', UNet()),
                             BCEWithLogitsLoss(),
@@ -105,23 +105,22 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=Fa
             t_ratio = 1-v_count/t_count
             v_ratio = v_count/t_count
 
-            print(f'Training to Validation Ratio\n')
-            print(f'Training ({t_count}): \t{t_ratio*100:>10.2f}%')
-            print(f'Validation ({v_count}): \t{v_ratio*100:>10.2f}%')
-            print(f'Total ({t_count + v_count}): \t\t{t_ratio*100 + v_ratio*100:>10.2f}%\n')
+            if kwargs.get('verbose', False):
+                print(f'Training to Validation Ratio\n')
+                print(f'Training ({t_count}): \t{t_ratio*100:>10.2f}%')
+                print(f'Validation ({v_count}): \t{v_ratio*100:>10.2f}%')
+                print(f'Total ({t_count + v_count}): \t\t{t_ratio*100 + v_ratio*100:>10.2f}%\n')
 
             assert t_ratio + v_ratio == 1  # Sanity Check
 
-        y_paths = save_data(output_dir / 'truths', y_data, transformations, tqdm, heatmap_title='Actual Tents per Region')
-        results = evaluator(p_output_path, y_data, [operator], transformations, x_overview_path=y_paths['x_overview_path'], 
+        y_paths = save_data(output_dir / 'truths', y_data, transformations, tqdm if kwargs.get('verbose', False) else None, heatmap_title='Actual Tents per Region')
+        results = evaluator(p_output_path, y_data, [operator], transformations, tqdm if kwargs.get('verbose', False) else None, x_overview_path=y_paths['x_overview_path'], 
                             t_loader=t_loader, v_loader=v_loader, epochs=kwargs.get('epochs', EPOCHS))
     else:
-        results = evaluator(p_output_path, load_data(x_dir, None, None), [operator], transformations)
+        results = evaluator(p_output_path, load_data(x_dir, None, None), [operator], transformations, tqdm if kwargs.get('verbose', False) else None)
 
-
-    print(f'Finished. Results:\n{results}') # TODO: tell user which directory to look in for the results (also return the directory, so we can pipe this to another program)
-    return results
-
+    if kwargs.get('verbose', False): print(f'Results saved to {output_dir}')
+    return results # TODO: ensure we can pipe the output of this program to another program
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Detect tents in satellite imagery.')
@@ -135,17 +134,9 @@ if __name__ == "__main__":
     parser.add_argument('--split', '-s', type=float, choices=range(0,1), default=TEST_SPLIT, help='Sets the test split. Only relevant when -t is also set.')
     parser.add_argument('--rate', '-r', type=float, default=INIT_LR, help='Sets the learning rate. Only relevant when -t is also set.')
     parser.add_argument('--random_state', type=int, default=RANDOM_STATE, help='Sets the random state. Only relevant when -t is also set.')
-    
-
-    # parser.add_argument('--verbose', '-v', action='store_true', help='Specifies whether or not to be verbose.')
-
+    parser.add_argument('--verbose', '-v', action='store_true', help='Specifies whether or not to be verbose.')
 
     args = parser.parse_args()
 
-
-    # Default Data
-    # data_dir = ROOT_DIR / 'data' / 'sarpol-zahab-tents' / 'data'
-    # main(data_dir / 'images', ROOT_DIR / 'output', MODEL_PATHS[0], labels_path=data_dir / 'sarpol_counts.csv', y_dir=data_dir / 'labels')
-
     main(args.input, args.output, args.checkpoint, args.train, epochs=args.epochs, batch=args.batch, 
-         split=args.split, lr=args.rate, random_state=args.random_state, image_size=args.image_size)
+         split=args.split, lr=args.rate, random_state=args.random_state, image_size=args.image_size, verbose=args.verbose)

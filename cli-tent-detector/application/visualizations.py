@@ -23,7 +23,7 @@ def save_data(output_dir, data, transformations, pbar=None, **kwargs) -> dict[st
 
     y = kwargs.get('y', 'y')
 
-    print('Saving overviews...')
+    if pbar: print('Saving overviews')
     x_overview_path, y_overview_path = vis.tile(loader,
                                                 kwargs.get('x_overview_name', 'x_overview' if not kwargs.get(
                                                     'x_overview_path') else None),
@@ -33,19 +33,18 @@ def save_data(output_dir, data, transformations, pbar=None, **kwargs) -> dict[st
 
     overlay_path = heatmap_path = None
     if x_overview_path:
-        print('Saving overlays...')
+        if pbar: print('Saving overlays')
         np.vectorize(vis.save_overlay_from_path)(
             data['image_paths'], data['mask_paths'], np.vectorize((lambda n: n))(data.index), 0.7, tile=True)
 
-        print('Saving overview overlay...')
+        if pbar: print('Saving overview overlay')
         overlay_path = vis.save_overlay_from_path(
             x_overview_path, y_overview_path, f'{y}_overlay', 0.7)
 
-        print('Saving heatmap...')
+        if pbar: print('Saving heatmap')
         heatmap_path = vis.save_heatmap(overlay_path, data, f'{y}_heatmap', kwargs.get(
             'heatmap_title', 'Number of Tents per Region'))
 
-        print('Done saving.')
     return {'x_overview_path': x_overview_path,
             'y_overview_path': y_overview_path,
             'overlay_path': overlay_path,
