@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 from PIL import Image
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
@@ -15,8 +16,8 @@ from application.dataset import SegmentationDataset
 from application.utils import make_dirs
 
 
-def save_data(output_dir, data, transformations, pbar=None, **kwargs) -> dict[str, str | None]:
-    dataset = SegmentationDataset(data, transformations)
+def save_data(output_dir, path_data, transformations, pbar=None, **kwargs) -> dict[str, str | None]:
+    dataset = SegmentationDataset(path_data, transformations)
     loader = DataLoader(dataset, shuffle=False, batch_size=int(math.sqrt(len(
         dataset))), pin_memory=False, num_workers=os.cpu_count(), persistent_workers=True)
     vis = Visualizations(output_dir, kwargs.get('format', OFormat))
@@ -35,14 +36,14 @@ def save_data(output_dir, data, transformations, pbar=None, **kwargs) -> dict[st
     if x_overview_path:
         if pbar: print('Saving overlays')
         np.vectorize(vis.save_overlay_from_path)(
-            data['image_paths'], data['mask_paths'], np.vectorize((lambda n: n))(data.index), 0.7, tile=True)
+            path_data['x_paths'], path_data['y_paths'], np.vectorize((lambda n: n))(path_data.index), 0.7, tile=True)
 
         if pbar: print('Saving overview overlay')
         overlay_path = vis.save_overlay_from_path(
             x_overview_path, y_overview_path, f'{y}_overlay', 0.7)
 
         if pbar: print('Saving heatmap')
-        heatmap_path = vis.save_heatmap(overlay_path, data, f'{y}_heatmap', kwargs.get(
+        heatmap_path = vis.save_heatmap(overlay_path, path_data, f'{y}_heatmap', kwargs.get(
             'heatmap_title', 'Number of Tents per Region'))
 
     return {'x_overview_path': x_overview_path,
@@ -54,11 +55,11 @@ def save_data(output_dir, data, transformations, pbar=None, **kwargs) -> dict[st
 class Visualizations():
     """Allows us to work with the images while ensuring we stay in the right directory."""
 
-    def __init__(self, root_directory: str, format: OFormat = OFormat) -> None:
+    def __init__(self, root_directory: Path, format: OFormat = OFormat) -> None:
         self.format = format
-        self.dirs = make_dirs({'output': f'{root_directory}',
-                               'tiles': f'{root_directory}/tiles',
-                               't_overlay': f'{root_directory}/tiles/overlay'})
+        self.dirs = make_dirs({'output': root_directory,
+                               'tiles': root_directory / 'tiles',
+                               't_overlay': root_directory / 'tiles' / 'overlay'})
 
     def merge(self, tiles: torch.Tensor, tile_row) -> torch.Tensor:
         """Merges a row of tiles. The total number of tiles must be divisible by 2."""
@@ -76,7 +77,7 @@ class Visualizations():
         if pbar:
             pbar = pbar(loader)
             pbar.set_description(f'Tiling')
-        for (x, y, _, _) in pbar if pbar else loader:
+        for x, y, _ in pbar if pbar else loader:
             if output_name_x:
                 output_x = self.merge(output_x, x)
             if output_name_y:

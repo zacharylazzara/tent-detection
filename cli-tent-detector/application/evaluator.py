@@ -7,11 +7,18 @@ from torchvision import transforms
 from application.dataset import SegmentationDataset
 from application.operator import Operator
 from application.visualizations import save_data
+from application.utils import Tiler
 
-
-def evaluator(prediction_output_dir, data: pd.DataFrame, operators: list[Operator], transformations: transforms.Compose = None, pbar: tqdm = None, **kwargs) -> dict[str, dict[str, str | None]]:
-    dataset = SegmentationDataset(data, transformations)
+def evaluator(prediction_output_dir, 
+              xy_paths: pd.DataFrame, 
+              operators: list[Operator], 
+              transformations: transforms.Compose = None, 
+              tiler: Tiler | None = None, 
+              pbar: tqdm = None, 
+              **kwargs) -> dict[str, dict[str, str | None]]:
+    dataset = SegmentationDataset(xy_paths, transformations, tiler, **kwargs)
     row_size = int(math.sqrt(len(dataset)))
+
     if row_size < 1:
         raise Exception(
             "Dataset contains no data. Make sure you set the input format to the correct format!")
@@ -28,7 +35,7 @@ def evaluator(prediction_output_dir, data: pd.DataFrame, operators: list[Operato
         if kwargs.get('t_loader') and kwargs.get('v_loader'):
             operator.train(kwargs.get('epochs', 1), kwargs.get('t_loader'), kwargs.get('v_loader'), pbar,
                         save_model=True, save_history=True)
-        p_data = operator.predict(loader, pbar, save_predictions=True)[1].combine_first(data).sort_index()
+        p_data = operator.predict(loader, pbar, save_predictions=True)[1].combine_first(dataset.paths).sort_index()
         paths[str(operator)] = save_data(prediction_output_dir, p_data, transformations, pbar, y='p', heatmap_title='Detected Tents per Region', **kwargs)
 
     return paths

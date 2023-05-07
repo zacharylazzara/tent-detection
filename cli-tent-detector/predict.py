@@ -23,16 +23,15 @@ class Predictor(BasePredictor):
 
     def predict(
         self,
-        image: Path = Input(description="Input image"),
-        scale: float = Input(description="Factor to scale image by", ge=0, le=10, default=1.5),
+        image: Path = Input(description="Input image")
     ) -> Path:
         """Run a single prediction on the model"""
         # processed_input = preprocess(image)
         # output = self.model(processed_image, scale)
         # return postprocess(output)
 
-        return main(image, OUTPUT_PATH, self.model, False)
+        return main(image, OUTPUT_PATH, self.model, False, verbose=True)
 
         
 
-        
+        # Command to test this: cog predict -i image=@data/x_overview.png

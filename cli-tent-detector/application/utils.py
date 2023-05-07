@@ -1,19 +1,14 @@
-import os
-import math
 import pandas as pd
 import numpy as np
-from enum import StrEnum
 from pathlib import Path
-from torch.utils.data import DataLoader
-from application.config import IFormat, OFormat
-from application.dataset import SegmentationDataset
+from PIL import Image
+from application.config import PathEnum
 
 
-def make_dirs(directories: dict[str, str]) -> StrEnum:
+def make_dirs(directories: dict[str, Path]) -> PathEnum:
     for directory in directories.values():
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-    return StrEnum('Directories', directories)
+        directory.mkdir(parents=True, exist_ok=True)
+    return PathEnum('Directories', directories)
 
 
 def load_data(x_images_dir: str, y_masks_dir: str, csv_path: str, **kwargs) -> pd.DataFrame:
@@ -28,7 +23,7 @@ def c_data(x_images_dir: str, y_masks_dir: str, csv_path: str, **kwargs) -> pd.D
 
 
 def d_data(x_images_dir: str, y_masks_dir: str = None, **kwargs) -> pd.DataFrame:
-    return associate_data(x_images_dir, y_masks_dir, directory_data(x_images_dir, kwargs.get('format', IFormat)), **kwargs)
+    return associate_data(x_images_dir, y_masks_dir, directory_data(x_images_dir), **kwargs)
 
 
 def associate_data(x_images_dir: str, y_masks_dir: str, rows: list, **kwargs) -> pd.DataFrame:
@@ -52,8 +47,71 @@ def csv_data(csv_path, **kwargs) -> list[tuple[str, int]]:
     return list(rows.itertuples(index=False, name=None))
 
 
-def directory_data(directory: str, format: IFormat) -> list[tuple[str, int]]:
+def directory_data(directory: str) -> list[tuple[str, int]]:
     names = []
-    for filepath in Path(directory).glob(f'*.{format.image}'):
+    for filepath in Path(directory).glob(f'*'):
         names.append((filepath.name, -1))
     return names
+
+
+class Tiler():
+    def __init__(self, kernel_size: tuple[int, int]) -> None:
+        self.kernel_size = kernel_size
+
+    def __tile(self, image: Image, output_dir: Path, kernel_size: tuple[int, int], output_format: str, **kwargs) -> list[Path]:
+            # Adapted from https://towardsdatascience.com/efficiently-splitting-an-image-into-tiles-in-python-using-numpy-d1bf0dd7b6f7
+            output_dir.mkdir(parents=kwargs.get('make_tiles_parents', False), exist_ok=kwargs.get('overwrite_tiles_dir', False))
+
+            image_height, image_width, image_channels = image.shape
+            tile_height, tile_width = kernel_size
+
+            # TODO: do tiles this way too (the inverse of this operation to merge tiles)
+            tiles = image.reshape(image_height//tile_height, tile_height,
+                                    image_width//tile_width, tile_width, image_channels).swapaxes(1, 2)
+
+            image_paths = []
+
+            index = 0
+            for row in tiles:
+                for column in row:
+                    filename = output_dir / f'tile_{index}{output_format}'
+                    Image.fromarray(column).save(filename)
+                    image_paths.append(filename)
+                    index += 1
+
+            return image_paths
+    
+    def _merge(self, image: Image, output_dir: Path, kernel_size: tuple[int, int], output_format: str, **kwargs):
+        pass
+
+    def tile(self, xy_paths: pd.DataFrame, **kwargs) -> pd.DataFrame | None:
+        assert len(xy_paths) == 1
+        x_path = xy_paths['x_paths'][0]
+        y_path = xy_paths['y_paths'][0]
+        assert x_path.is_file()
+
+        paths = {'x_paths': [], 'y_paths': []}
+        with Image.open(xy_paths['x_paths'][0]).convert("RGB") as x:
+            x = np.asarray(x)
+        if x.shape[:2] > self.kernel_size:
+            paths['x_paths'] = self.__tile(x, x_path.parent / 'x_tiles', self.kernel_size, x_path.suffix, **kwargs)
+            if y_path:
+                with Image.open(xy_paths['y_paths'][0]).convert("L") as y:
+                    y = np.asarray(y)
+                paths['y_paths'] = self.__tile(y, y_path.parent / 'y_tiles', self.kernel_size, y_path.suffix)
+            else:
+                paths['y_paths'] = [None for _ in paths['x_paths']]
+            return pd.DataFrame.from_dict(paths).sort_values('x_paths', ignore_index=True)
+        else:
+            return None
+        
+    def merge(self, xy_tile_paths: pd.DataFrame):
+        pass
+
+        # TODO: untile this way (the inverse of this operation to merge tiles)
+        # tiles = image.reshape(image_height//tile_height, tile_height, image_width//tile_width, tile_width, image_channels).swapaxes(1, 2)
+
+        # Note that we might want kernel_size to be a class property, as we must untile with the same settings
+        # TODO: we might just want to move tile and untile to a completely separate Tiler class; maybe we just pass the tiling class or function in when 
+        # initializing the dataset?
+

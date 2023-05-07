@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 from statistics import mean
 from tqdm.auto import tqdm
 from torch.optim import Optimizer
@@ -15,7 +16,7 @@ from application.utils import make_dirs
 class Operator():
     """Makes it possible to work with models in a more generalized and scalable fashion."""
 
-    def __init__(self, root_directory: str, model: torch.nn.Module, loss_fn: torch.nn.Module, opt_fn: Optimizer, lr: float, metric_fns=None, **kwargs) -> None:
+    def __init__(self, root_directory: Path, model: torch.nn.Module, loss_fn: torch.nn.Module, opt_fn: Optimizer, lr: float, metric_fns=None, **kwargs) -> None:
         self.device = kwargs.get('device', 'gpu' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
         self.model = model.to(self.device)
 
@@ -31,9 +32,9 @@ class Operator():
         ###########################
 
         self.format = kwargs.get('format', OFormat)
-        self.dirs = make_dirs({'output':       f'{root_directory}',
-                               'predictions':  f'{root_directory}/tiles',
-                               'history':      f'{root_directory}/metrics'})
+        self.dirs = make_dirs({'output':       root_directory,
+                               'predictions':  root_directory / 'tiles',
+                               'history':      root_directory / 'metrics'})
 
         # TODO: handle the case when metrics is none (it might break history); might
         # want to do the same with loss if we're not interested in training a new model.
@@ -53,8 +54,8 @@ class Operator():
         for e in pbar if pbar else range(epochs):
             self.model.train()
             losses = []
-            for (i, (x, y, _, _)) in enumerate(t_loader):
-                (x, y) = (x.to(self.device), y.to(self.device))
+            for x, y, _ in t_loader:
+                x, y = (x.to(self.device), y.to(self.device))
 
                 pred = self.model(x)
                 loss = self.loss_fn(pred, y)
@@ -102,8 +103,8 @@ class Operator():
             if pbar:
                 pbar = pbar(loader)
                 pbar.set_description(f'Evaluating {self.model}')
-            for (x, y, _, name) in pbar if pbar else loader:
-                (x, y) = (x.to(self.device), y.to(self.device))
+            for x, y, name in pbar if pbar else loader:
+                x, y = (x.to(self.device), y.to(self.device))
 
                 p = self.model(x)
 
@@ -131,13 +132,12 @@ class Operator():
         """Saves predictions to disk and outputs a dataframe with the names, paths, and labels."""
         saved_predictions = []
         for prediction in predictions:
-            out_path = f'{kwargs.get("directory_override", self.dirs.predictions)}/{prediction["name"]}.{kwargs.get("format_override", self.format.image)}'
+            out_path = kwargs.get("directory_override", self.dirs.predictions) / prediction["name"]
             save_image(prediction['mask'], out_path)
-            saved_predictions.append({'names': prediction["name"],
-                                      'image_paths': None,
-                                      'mask_paths': out_path,
+            saved_predictions.append({'x_paths': None,
+                                      'y_paths': out_path,
                                       'labels': self.__count_contours(prediction['mask'])})
-        return pd.DataFrame(saved_predictions).set_index('names').fillna(np.nan)
+        return pd.DataFrame(saved_predictions).sort_values('y_paths', ignore_index=True).fillna(np.nan)
 
     # TODO: either remove save_predictions_to_spreadsheet or set it up so we call it from __save_predictions
     # def save_predictions_to_spreadsheet(self, predictions_dataframe, **kwargs):
