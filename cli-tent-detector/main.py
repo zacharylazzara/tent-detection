@@ -15,11 +15,12 @@ from application.dataset import SegmentationDataset
 from application.evaluator import evaluator
 from application.operator import Operator
 from application.unet import UNet
+from application.config import IOFormat
 from application.utils import load_data, Tiler
 from application.visualizations import save_data
 
 ROOT_DIR = Path(__file__).parent
-MODEL_PATH = [mp for mp in (ROOT_DIR / 'models').glob(f'*')][0]
+MODEL_PATH = [mp for mp in (ROOT_DIR / 'models').glob(f'*.{IOFormat.model}')][0]
 MODEL_TYPE = UNet()
 EPOCHS = 200
 BATCH_SIZE = 8
@@ -29,6 +30,7 @@ RANDOM_STATE = 42
 KERNEL_SIZE = (512, 512) # The model expects tiles to be this size
 DEVICE = 'gpu' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 PIN_MEMORY = True if DEVICE != 'cpu' else False
+
 
 def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module, training: bool=False, **kwargs) -> dict[str, dict[str, str | None]]:
     model_type = kwargs.get('model', MODEL_TYPE)
@@ -137,26 +139,26 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module,
     return results # TODO: ensure we can pipe the output of this program to another program
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='Detect tents in satellite imagery.')
-    # parser.add_argument('input', type=Path, help='Specifies the input directory.')
-    # parser.add_argument('output', type=Path, help='Specifies the output directory.')
-    # parser.add_argument('--checkpoint', '-c', type=Path, default=MODEL_PATH, help='Specifies the model checkpoint path. If not specified a new model will be created.')
-    # parser.add_argument('--kernel_size', type=tuple[int,int], default=KERNEL_SIZE, help='Sets the image size.')
-    # parser.add_argument('--train', '-t', action='store_true', help='Puts the model in training mode.')
-    # parser.add_argument('--epochs', '-e', type=int, default=EPOCHS, help='Sets the number of epochs. Only relevant when -t is also set.')
-    # parser.add_argument('--batch', '-b', type=int, default=BATCH_SIZE, help='Sets the batch size. Only relevant when -t is also set.')
-    # parser.add_argument('--split', '-s', type=float, choices=range(0,1), default=TEST_SPLIT, help='Sets the test split. Only relevant when -t is also set.')
-    # parser.add_argument('--rate', '-r', type=float, default=INIT_LR, help='Sets the learning rate. Only relevant when -t is also set.')
-    # parser.add_argument('--random_state', type=int, default=RANDOM_STATE, help='Sets the random state. Only relevant when -t is also set.')
-    # parser.add_argument('--verbose', '-v', action='store_true', help='Specifies whether or not to be verbose.')
+    parser = argparse.ArgumentParser(description='Detect tents in satellite imagery.')
+    parser.add_argument('input', type=Path, help='Specifies the input directory.')
+    parser.add_argument('output', type=Path, help='Specifies the output directory.')
+    parser.add_argument('--checkpoint', '-c', type=Path, default=MODEL_PATH, help='Specifies the model checkpoint path. If not specified a new model will be created.')
+    parser.add_argument('--kernel_size', type=tuple[int,int], default=KERNEL_SIZE, help='Sets the image size.')
+    parser.add_argument('--train', '-t', action='store_true', help='Puts the model in training mode.')
+    parser.add_argument('--epochs', '-e', type=int, default=EPOCHS, help='Sets the number of epochs. Only relevant when -t is also set.')
+    parser.add_argument('--batch', '-b', type=int, default=BATCH_SIZE, help='Sets the batch size. Only relevant when -t is also set.')
+    parser.add_argument('--split', '-s', type=float, choices=range(0,1), default=TEST_SPLIT, help='Sets the test split. Only relevant when -t is also set.')
+    parser.add_argument('--rate', '-r', type=float, default=INIT_LR, help='Sets the learning rate. Only relevant when -t is also set.')
+    parser.add_argument('--random_state', type=int, default=RANDOM_STATE, help='Sets the random state. Only relevant when -t is also set.')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Specifies whether or not to be verbose.')
 
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    # main(args.input, args.output, args.checkpoint, args.train, epochs=args.epochs, batch=args.batch, 
-    #      split=args.split, lr=args.rate, random_state=args.random_state, kernel_size=args.kernel_size, verbose=args.verbose)
+    main(args.input, args.output, args.checkpoint, args.train, epochs=args.epochs, batch=args.batch, 
+         split=args.split, lr=args.rate, random_state=args.random_state, kernel_size=args.kernel_size, verbose=args.verbose)
 
 
     # DEBUGGING (uncomment above lines and remove following lines)
-    main(ROOT_DIR/'data/x_overview.png', ROOT_DIR/'output', ROOT_DIR/'models/UNet.pth', verbose=True)
+    # main(ROOT_DIR/'data/x_overview.png', ROOT_DIR/'output', ROOT_DIR/'models/UNet.pth', verbose=True)
     # main(ROOT_DIR/'data/sarpol-zahab-tents/data/images', ROOT_DIR/'output', ROOT_DIR/'models/UNet.pth', verbose=True)
     

@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 from torch.optim import Optimizer
 from torchvision.utils import save_image
 from torch.utils.data import DataLoader
-from application.config import OFormat
+from application.config import IOFormat
 from application.utils import make_dirs
 
 
@@ -31,7 +31,7 @@ class Operator():
                 metric_fn.to(self.device)
         ###########################
 
-        self.format = kwargs.get('format', OFormat)
+        self.format = kwargs.get('format', IOFormat)
         self.dirs = make_dirs({'output':       root_directory,
                                'predictions':  root_directory / 'tiles',
                                'history':      root_directory / 'metrics'})
@@ -103,7 +103,7 @@ class Operator():
             if pbar:
                 pbar = pbar(loader)
                 pbar.set_description(f'Evaluating {self.model}')
-            for x, y, name in pbar if pbar else loader:
+            for x, y, filename in pbar if pbar else loader:
                 x, y = (x.to(self.device), y.to(self.device))
 
                 p = self.model(x)
@@ -116,7 +116,7 @@ class Operator():
                         metric_fn.update(p, y)
 
                 for batch, mask in enumerate(p.cpu().detach()):
-                    predictions.append({'name': name[batch], 'mask': mask})
+                    predictions.append({'name': filename[batch], 'mask': mask})
 
             if losses != []:
                 history['losses'].append(mean(losses))

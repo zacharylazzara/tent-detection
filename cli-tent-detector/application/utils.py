@@ -1,7 +1,11 @@
 import pandas as pd
 import numpy as np
+import torch
+from tqdm.auto import tqdm
 from pathlib import Path
 from PIL import Image
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 from application.config import PathEnum
 
 
@@ -65,24 +69,28 @@ class Tiler():
             image_height, image_width, image_channels = image.shape
             tile_height, tile_width = kernel_size
 
-            # TODO: do tiles this way too (the inverse of this operation to merge tiles)
             tiles = image.reshape(image_height//tile_height, tile_height,
                                     image_width//tile_width, tile_width, image_channels).swapaxes(1, 2)
 
             image_paths = []
 
-            index = 0
+            index = 1
             for row in tiles:
                 for column in row:
-                    filename = output_dir / f'tile_{index}{output_format}'
+                    filename = output_dir / f'tile_{index:0{kwargs.get("pad_zeros", 3)}d}{output_format}'
                     Image.fromarray(column).save(filename)
                     image_paths.append(filename)
                     index += 1
 
             return image_paths
     
-    def _merge(self, image: Image, output_dir: Path, kernel_size: tuple[int, int], output_format: str, **kwargs):
-        pass
+    # def _merge(self, tiles: torch.Tensor, tile_row) -> torch.Tensor:
+    #     """Merges a row of tiles. The total number of tiles must be divisible by 2."""
+    #     if tiles == None:
+    #         tiles = torch.cat(tuple(tile_row), 2)
+    #     else:
+    #         tiles = torch.cat((tiles, torch.cat(tuple(tile_row), 2)), 1)
+    #     return tiles
 
     def tile(self, xy_paths: pd.DataFrame, **kwargs) -> pd.DataFrame | None:
         assert len(xy_paths) == 1
@@ -98,20 +106,35 @@ class Tiler():
             if y_path:
                 with Image.open(xy_paths['y_paths'][0]).convert("L") as y:
                     y = np.asarray(y)
-                paths['y_paths'] = self.__tile(y, y_path.parent / 'y_tiles', self.kernel_size, y_path.suffix)
+                paths['y_paths'] = self.__tile(y, y_path.parent / 'y_tiles', self.kernel_size, y_path.suffix, **kwargs)
             else:
                 paths['y_paths'] = [None for _ in paths['x_paths']]
             return pd.DataFrame.from_dict(paths).sort_values('x_paths', ignore_index=True)
         else:
             return None
         
-    def merge(self, xy_tile_paths: pd.DataFrame):
-        pass
+    # def merge(self, loader: DataLoader, output_name_x: str, output_name_y: str, pbar: tqdm = None) -> tuple[str, str]:
+    #     """Tiles using a loader. Total number of tiles must be divisible by 2."""
+    #     output_path_x = output_path_y = ''
+    #     output_x = output_y = None
 
-        # TODO: untile this way (the inverse of this operation to merge tiles)
-        # tiles = image.reshape(image_height//tile_height, tile_height, image_width//tile_width, tile_width, image_channels).swapaxes(1, 2)
+    #     if pbar:
+    #         pbar = pbar(loader)
+    #         pbar.set_description(f'Tiling')
+    #     for x, y, _ in pbar if pbar else loader:
+    #         if output_name_x:
+    #             output_x = self.merge(output_x, x)
+    #         if output_name_y:
+    #             output_y = self.merge(output_y, y)
 
-        # Note that we might want kernel_size to be a class property, as we must untile with the same settings
-        # TODO: we might just want to move tile and untile to a completely separate Tiler class; maybe we just pass the tiling class or function in when 
-        # initializing the dataset?
+    #     if output_x is not None:
+    #         output_path_x = f'{self.dirs.output}/{output_name_x}.{self.format.image}'
+    #         save_image(output_x, output_path_x)
+    #     if output_y is not None:
+    #         output_path_y = f'{self.dirs.output}/{output_name_y}.{self.format.image}'
+    #         save_image(output_y, output_path_y)
+
+    #     return output_path_x, output_path_y
+
+    # TODO: move merge functions to Tiler from Visualizations
 

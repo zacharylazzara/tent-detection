@@ -4,13 +4,7 @@ from pathlib import Path
 
 
 class IOFormat(StrEnum):
-    pass
-
-
-class OFormat(IOFormat):
     model = 'pth'
-    spreadsheet = 'csv'
-    image = 'png'
 
 
 class PathEnum(type(Path()), enum.Enum):
