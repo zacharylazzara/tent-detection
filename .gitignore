@@ -1,6 +1,6 @@
 __pycache__
-cli-tent-detector/output
-cli-tent-detector/data
+output
+data
 
 # Template From https://github.com/github/gitignore/
 # macOS #######################

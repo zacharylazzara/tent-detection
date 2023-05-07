@@ -33,7 +33,7 @@ IMAGE_SIZE = (512, 512) # The model expects tiles to be this size
 DEVICE = 'gpu' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 PIN_MEMORY = True if DEVICE != 'cpu' else False
 
-def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=False, **kwargs):
+def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module, training: bool=False, **kwargs) -> dict[str, dict[str, str | None]]:
     p_output_path = output_dir / 'predictions'
     y_dir = kwargs.get('y_dir')
 
@@ -46,19 +46,26 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path, training: bool=Fa
         if kwargs.get('verbose', False): print('Warning: Training on CPU. This might be exceptionally slow.')
 
     operator = None
+    
     if checkpoint_path:
         model = None
-        checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
-
+        checkpoint = None
         try:
-            checkpoint.eval()
+            checkpoint_path.eval()
         except AttributeError:
-            if kwargs.get('verbose', False): print('Loading checkpoint')
-            model = kwargs.get('model', UNet())
-            model.load_state_dict(checkpoint)
+            checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
+            try:
+                checkpoint.eval()
+            except AttributeError:
+                if kwargs.get('verbose', False): print('Loading checkpoint')
+                model = kwargs.get('model', UNet())
+                model.load_state_dict(checkpoint)
+            else:
+                if kwargs.get('verbose', False): print('Loading model')
+                model = checkpoint
         else:
-            if kwargs.get('verbose', False): print('Loading model')
-            model = checkpoint
+            if kwargs.get('verbose', False): print('Using supplied model')
+            model = checkpoint_path
 
         operator = Operator(p_output_path,
                             model,
