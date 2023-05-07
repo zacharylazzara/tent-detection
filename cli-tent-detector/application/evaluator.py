@@ -2,6 +2,7 @@ import os
 import math
 import pandas as pd
 from tqdm.auto import tqdm
+from pathlib import Path
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from application.dataset import SegmentationDataset
@@ -15,7 +16,7 @@ def evaluator(prediction_output_dir,
               transformations: transforms.Compose = None, 
               tiler: Tiler | None = None, 
               pbar: tqdm = None, 
-              **kwargs) -> dict[str, dict[str, str | None]]:
+              **kwargs) -> dict[str, dict[str, Path | None]]:
     dataset = SegmentationDataset(xy_paths, transformations, tiler, **kwargs)
     row_size = int(math.sqrt(len(dataset)))
 

@@ -16,7 +16,7 @@ from application.dataset import SegmentationDataset
 from application.utils import make_dirs
 
 
-def save_data(output_dir, path_data, transformations, pbar=None, **kwargs) -> dict[str, str | None]:
+def save_data(output_dir, path_data, transformations, pbar=None, **kwargs) -> dict[str, Path | None]:
     dataset = SegmentationDataset(path_data, transformations)
     loader = DataLoader(dataset, shuffle=False, batch_size=int(math.sqrt(len(
         dataset))), pin_memory=False, num_workers=os.cpu_count(), persistent_workers=True)
@@ -120,7 +120,7 @@ class Visualizations():
         overlayed_image.save(output_path)
         return output_path
 
-    def save_heatmap(self, image_path: Path, dataframe: pd.DataFrame, output_filename: str, title: str):
+    def save_heatmap(self, image_path: Path, dataframe: pd.DataFrame, output_filename: str, title: str) -> Path:
         data = [x for x in np.array_split(dataframe['labels'].replace(
             0, np.nan).tolist(), int(math.sqrt(dataframe.shape[0])))]
 
@@ -139,7 +139,7 @@ class Visualizations():
             ax.imshow(image, aspect=ax.get_aspect(),
                       extent=ax.get_xlim()+ax.get_ylim(), zorder=1)
 
-        output_path = f'{self.dirs.output}/{output_filename}'
+        output_path = self.dirs.output / output_filename
 
         plt.savefig(output_path, bbox_inches='tight')
 

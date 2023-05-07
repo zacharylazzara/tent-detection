@@ -32,7 +32,7 @@ DEVICE = 'gpu' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_
 PIN_MEMORY = True if DEVICE != 'cpu' else False
 
 
-def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module, training: bool=False, **kwargs) -> dict[str, dict[str, str | None]]:
+def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module, training: bool=False, **kwargs) -> dict[str, dict[str, Path | None]]:
     model_type = kwargs.get('model', MODEL_TYPE)
     epochs = kwargs.get('epochs', EPOCHS)
     batch_size = kwargs.get('batch', BATCH_SIZE)
