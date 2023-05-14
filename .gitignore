@@ -1,6 +1,7 @@
 __pycache__
 output
 data
+.cog
 
 # Template From https://github.com/github/gitignore/
 # macOS #######################

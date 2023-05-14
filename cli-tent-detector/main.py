@@ -136,7 +136,7 @@ def main(x_dir: Path, output_dir: Path, checkpoint_path: Path | torch.nn.Module,
         results = evaluator(p_output_path, pd.DataFrame({'x_paths': x_dir, 'y_paths': None}, index=[0]), [operator], transformations, tiler, pbar)
 
     if verbose: print(f'Results saved to {output_dir}')
-    return results # TODO: ensure we can pipe the output of this program to another program
+    return results
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Detect tents in satellite imagery.')
@@ -156,9 +156,4 @@ if __name__ == "__main__":
 
     main(args.input, args.output, args.checkpoint, args.train, epochs=args.epochs, batch=args.batch, 
          split=args.split, lr=args.rate, random_state=args.random_state, kernel_size=args.kernel_size, verbose=args.verbose)
-
-
-    # DEBUGGING (uncomment above lines and remove following lines)
-    # main(ROOT_DIR/'data/x_overview.png', ROOT_DIR/'output', ROOT_DIR/'models/UNet.pth', verbose=True)
-    # main(ROOT_DIR/'data/sarpol-zahab-tents/data/images', ROOT_DIR/'output', ROOT_DIR/'models/UNet.pth', verbose=True)
     
